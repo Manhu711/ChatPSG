@@ -32,12 +32,35 @@ ChatPSG is an application that allows you to search for keywords across Product 
 2. Install dependencies: `pip install -r requirements.txt`
 3. Place PSG PDF files in the `pdfs` folder
 4. Run the preprocessing script: `python preprocess_docs.py`
-5. Run the app: `streamlit run app8.py`
+5. Add your Google API key to `.streamlit/secrets.toml` (see API Key Setup below)
+6. Run the app: `streamlit run app.py`
+
+## API Key Setup
+
+This application requires a Google Gemini API key to function properly. As the application administrator, you'll need to provide your own API key. You can get one at [Google AI Studio](https://makersuite.google.com/app/apikey).
+
+### For Local Development
+
+Add your API key to `.streamlit/secrets.toml`:
+
+```toml
+[api_keys]
+GOOGLE_API_KEY = "your-api-key-here"
+```
+
+### For Streamlit Cloud Deployment
+
+In the Streamlit Cloud dashboard, go to your app settings, find the "Secrets" section, and add:
+
+```toml
+[api_keys]
+GOOGLE_API_KEY = "your-api-key-here"
+```
 
 ## Deployment
 
-This app can be deployed on Streamlit Cloud by connecting to this GitHub repository.
+This app can be deployed on Streamlit Cloud by connecting to this GitHub repository. Make sure to set up your API key in the Streamlit secrets as described above.
 
 ## Note
 
-You will need to provide your own Google API key for Gemini to work. 
+This application uses the Google Gemini API for AI chat functionality. The API key is managed by the application administrator, so end users don't need to provide their own keys. 
