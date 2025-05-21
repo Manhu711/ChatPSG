@@ -526,17 +526,15 @@ def chat_interface():
                             # Create a list of dictionaries for the table
                             ref_data = []
                             for i, source in enumerate(source_docs):
-                                # Get keywords if available
-                                keywords = source.metadata.get('keywords', '')
-                                
+                                # Remove keywords collection
                                 ref_data.append({
                                     "Chunk": f"Retrieved Text Chunk {i+1}",
                                     "File Name": source.metadata['filename'],
                                     "Page": source.metadata['page'],
                                     "Active Ingredient": source.metadata.get('Active Ingredient (link to Specific Guidance)', 'N/A'),
                                     "Dosage Form": source.metadata.get('Dosage Form', 'N/A'),
-                                    "URL": source.metadata.get('URL', 'N/A'),
-                                    "Keywords": keywords[:50] + "..." if len(keywords) > 50 else keywords
+                                    "URL": source.metadata.get('URL', 'N/A')
+                                    # Keywords column removed
                                 })
                             # Create DataFrame and set Chunk as index
                             df = pd.DataFrame(ref_data)
