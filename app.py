@@ -8,8 +8,8 @@ from datetime import datetime
 import re
 from tqdm import tqdm
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.embeddings import HuggingFaceEmbeddings
-from langchain.vectorstores import FAISS
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.vectorstores import FAISS
 from langchain.chains import ConversationalRetrievalChain
 from langchain.memory import ConversationBufferMemory
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -21,9 +21,11 @@ from typing import Any, Dict, List, Optional
 from langchain.schema import LLMResult
 from langchain.prompts import PromptTemplate
 from langchain.chains import RetrievalQA
+from langchain_community.retrievers import (
+    BM25Retriever,
+)
 from langchain.retrievers import (
     ContextualCompressionRetriever,
-    BM25Retriever,
 )
 from langchain.retrievers.ensemble import EnsembleRetriever
 from langchain.retrievers.document_compressors import DocumentCompressorPipeline
