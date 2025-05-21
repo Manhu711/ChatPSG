@@ -548,16 +548,26 @@ def main():
             st.session_state.pdf_contents = {}
             st.session_state.all_pdf_files = []
         
-        # Check if PDF folder exists
-        if not os.path.exists(PDF_FOLDER):
-            st.error(f"PDF folder not found: {PDF_FOLDER}")
-            st.info("Please update the PDF_FOLDER variable to point to your PDF directory.")
+        # Check if PDF folder or index file exists
+        index_file = "pdf_index.pkl"
+        if not os.path.exists(PDF_FOLDER) and not os.path.exists(index_file):
+            st.error(f"Neither PDF folder '{PDF_FOLDER}' nor index file '{index_file}' found.")
+            st.info("Please provide either PDF files or a pre-processed index file.")
             return
         
         # Initialize or load the PDF index
         with st.spinner("Processing PDF files..."):
-            # Index is always rebuilt if needed based on file changes
-            pdf_contents, all_pdf_files = index_pdfs(PDF_FOLDER, force_reindex=False)
+            if os.path.exists(index_file):
+                # Load from index file if it exists
+                index_data = load_index(index_file)
+                if index_data:
+                    pdf_contents = index_data.get("contents", {})
+                    all_pdf_files = index_data.get("files", [])
+                    st.success(f"Successfully loaded index with {len(all_pdf_files)} PSG files")
+            else:
+                # Only rebuild index if PDF folder exists and index needs rebuilding
+                pdf_contents, all_pdf_files = index_pdfs(PDF_FOLDER, force_reindex=False)
+                
             st.session_state.pdf_contents = pdf_contents
             st.session_state.all_pdf_files = all_pdf_files
         
@@ -565,7 +575,6 @@ def main():
         st.sidebar.write(f"Total PSGs in collection: {len(st.session_state.all_pdf_files)}")
         
         # Display last index date if available
-        index_file = "pdf_index.pkl"
         if os.path.exists(index_file):
             index_time = datetime.fromtimestamp(os.path.getmtime(index_file))
             st.sidebar.write(f"Index last updated: {index_time.strftime('%Y-%m-%d %H:%M:%S')}")
