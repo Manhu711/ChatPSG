@@ -52,14 +52,20 @@ Choose your mode in the sidebar.
 
 # Constants
 PDF_FOLDER = "pdfs"  # Update with your actual path
+INDEX_FILE = "pdf_index.pkl"  # Define a constant for the index file name
 
-# API Key handling - get from secrets if available, otherwise use hardcoded value for development
+# API Key handling - get from secrets for all users
 try:
     GOOGLE_API_KEY = st.secrets["api_keys"]["GOOGLE_API_KEY"]
-except:
-    # Fallback for local development
-    GOOGLE_API_KEY = "AIzaSyAB2DJ6kxXbAAcsJOPgyg_oYLQV492Iu8s"
-    st.warning("Using development API key. In production, use Streamlit secrets.")
+except Exception as e:
+    st.error("Google API Key not found in Streamlit secrets.")
+    st.info("""
+    This app requires a Google Gemini API key to be configured by the administrator.
+    
+    If you are the app administrator, please add your API key to Streamlit secrets.
+    """)
+    print(f"API Key error: {str(e)}")
+    st.stop()  # Stop execution until API key is provided
 
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"  # Default model, will be updated if embedding_model.txt exists
 
@@ -127,10 +133,33 @@ def save_index(index_data, filename="pdf_index.pkl"):
         st.error(f"Error saving index: {str(e)}")
         return False
 
-def load_index(filename="pdf_index.pkl"):
+def load_index(filename=INDEX_FILE):
+    """Load the PDF index file"""
     try:
-        with open(filename, 'rb') as f:
-            return pickle.load(f)
+        # Try different possible locations for the index file
+        possible_paths = [
+            filename,  # Try the current directory
+            os.path.join(os.getcwd(), filename),  # Try absolute path in current directory
+            os.path.join(".", filename),  # Try explicitly in current directory
+        ]
+        
+        # Print debug info about file paths
+        print(f"Current working directory: {os.getcwd()}")
+        print(f"Looking for index file {filename} in possible locations:")
+        for path in possible_paths:
+            exists = os.path.exists(path)
+            print(f"  - {path}: {'EXISTS' if exists else 'NOT FOUND'}")
+        
+        # Try each path
+        for path in possible_paths:
+            if os.path.exists(path):
+                print(f"Loading index from: {path}")
+                with open(path, 'rb') as f:
+                    return pickle.load(f)
+        
+        # If we get here, the file wasn't found
+        st.warning(f"Index file {filename} not found in any of the expected locations")
+        return None
     except Exception as e:
         st.warning(f"Error loading index: {str(e)}")
         return None
@@ -548,36 +577,50 @@ def main():
             st.session_state.pdf_contents = {}
             st.session_state.all_pdf_files = []
         
-        # Check if PDF folder or index file exists
-        index_file = "pdf_index.pkl"
-        if not os.path.exists(PDF_FOLDER) and not os.path.exists(index_file):
-            st.error(f"Neither PDF folder '{PDF_FOLDER}' nor index file '{index_file}' found.")
-            st.info("Please provide either PDF files or a pre-processed index file.")
-            return
-        
-        # Initialize or load the PDF index
-        with st.spinner("Processing PDF files..."):
-            if os.path.exists(index_file):
-                # Load from index file if it exists
-                index_data = load_index(index_file)
+        # First check if the index file exists - this is the preferred way
+        if os.path.exists(INDEX_FILE):
+            print(f"Found index file: {INDEX_FILE}")
+            # Load from index file if it exists
+            with st.spinner("Loading indexed PSG data..."):
+                index_data = load_index(INDEX_FILE)
                 if index_data:
                     pdf_contents = index_data.get("contents", {})
                     all_pdf_files = index_data.get("files", [])
                     st.success(f"Successfully loaded index with {len(all_pdf_files)} PSG files")
-            else:
-                # Only rebuild index if PDF folder exists and index needs rebuilding
+                    
+                    # Store in session state
+                    st.session_state.pdf_contents = pdf_contents
+                    st.session_state.all_pdf_files = all_pdf_files
+                    
+                    # Display total number of PDFs
+                    st.sidebar.write(f"Total PSGs in collection: {len(st.session_state.all_pdf_files)}")
+                    
+                    # Display last index date
+                    index_time = datetime.fromtimestamp(os.path.getmtime(INDEX_FILE))
+                    st.sidebar.write(f"Index last updated: {index_time.strftime('%Y-%m-%d %H:%M:%S')}")
+                else:
+                    st.error("Failed to load index file. The file may be corrupted.")
+                    return
+        # Only check for PDF folder if index file doesn't exist
+        elif os.path.exists(PDF_FOLDER):
+            print(f"Index file not found, but PDF folder exists: {PDF_FOLDER}")
+            # Initialize or load the PDF index from the PDF folder
+            with st.spinner("Processing PDF files..."):
                 pdf_contents, all_pdf_files = index_pdfs(PDF_FOLDER, force_reindex=False)
+                st.session_state.pdf_contents = pdf_contents
+                st.session_state.all_pdf_files = all_pdf_files
                 
-            st.session_state.pdf_contents = pdf_contents
-            st.session_state.all_pdf_files = all_pdf_files
-        
-        # Display total number of PDFs
-        st.sidebar.write(f"Total PSGs in collection: {len(st.session_state.all_pdf_files)}")
-        
-        # Display last index date if available
-        if os.path.exists(index_file):
-            index_time = datetime.fromtimestamp(os.path.getmtime(index_file))
-            st.sidebar.write(f"Index last updated: {index_time.strftime('%Y-%m-%d %H:%M:%S')}")
+                # Display total number of PDFs
+                st.sidebar.write(f"Total PSGs in collection: {len(st.session_state.all_pdf_files)}")
+        else:
+            # Neither index file nor PDF folder found
+            print("Files in current directory:")
+            for file in os.listdir("."):
+                print(f"  - {file}")
+                
+            st.error(f"Neither PDF folder '{PDF_FOLDER}' nor index file '{INDEX_FILE}' found.")
+            st.info("Please provide either PDF files or a pre-processed index file.")
+            return
         
         # Main content area - perform search if button clicked
         if search_button and keywords_input:
